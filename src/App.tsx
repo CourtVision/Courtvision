@@ -20,6 +20,15 @@ export default function App() {
   const [videoId, setVideoId] = useState<number | null>(null);
   const [clips, setClips] = useState<ClipRecord[]>([]);
 
+  // Local HTTP Streaming Server Port
+  const [streamPort, setStreamPort] = useState<number | null>(null);
+
+  useEffect(() => {
+    import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke<number>('get_stream_port').then(setStreamPort).catch(console.error);
+    });
+  }, []);
+
   // Hotkey engine state
   const [activeClipType, setActiveClipType] = useState<ClipType | null>(null);
   const clipStartRef = useRef<number | null>(null);
@@ -28,6 +37,20 @@ export default function App() {
   // Tagging form state
   const [taggingClip, setTaggingClip] = useState<ClipRecord | null>(null);
   const [showTagForm, setShowTagForm] = useState(false);
+
+  // Auto-pause video when the tag form opens
+  useEffect(() => {
+    if (showTagForm) {
+      videoPlayerRef.current?.pause();
+    }
+  }, [showTagForm]);
+
+  // Clip preview state
+  const [previewRange, setPreviewRange] = useState<{ start: number; end: number } | null>(null);
+
+  const handlePreviewEnd = useCallback(() => {
+    setPreviewRange(null);
+  }, []);
 
   // Load clips whenever videoId changes
   const refreshClips = useCallback(async () => {
@@ -121,9 +144,28 @@ export default function App() {
       if (videoId === null) return;
 
       const key = e.key.toLowerCase();
+
+      // Playback speed hotkeys
+      if (key === '[' || key === '{') {
+        videoPlayerRef.current?.setPlaybackRate(0.5);
+        return;
+      }
+      if (key === ']' || key === '}') {
+        videoPlayerRef.current?.setPlaybackRate(2.0);
+        return;
+      }
+      if (key === '\\' || key === '|') {
+        videoPlayerRef.current?.setPlaybackRate(1.0);
+        return;
+      }
+
       if (key !== 'o' && key !== 'd') return;
 
       e.preventDefault();
+
+      // Auto-start video play when a tag hotkey is pressed
+      videoPlayerRef.current?.play();
+
       const pressedType: ClipType = key === 'o' ? 'Offense' : 'Defense';
 
       if (activeClipType === pressedType) {
@@ -202,21 +244,7 @@ export default function App() {
       {/* Header */}
       <header className="app-header">
         <div className="header-brand">
-          <div className="logo">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="url(#logo-grad)" strokeWidth="2" />
-              <path d="M12 2C12 2 12 12 12 12" stroke="url(#logo-grad)" strokeWidth="2" />
-              <path d="M12 12C12 12 20 6 20 6" stroke="url(#logo-grad)" strokeWidth="1.5" />
-              <path d="M12 12C12 12 20 18 20 18" stroke="url(#logo-grad)" strokeWidth="1.5" />
-              <defs>
-                <linearGradient id="logo-grad" x1="0" y1="0" x2="24" y2="24">
-                  <stop offset="0%" stopColor="#ff6b35" />
-                  <stop offset="100%" stopColor="#3b82f6" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <h1>Courtvision</h1>
+          <img src="/courtvisionlogo.png" alt="Courtvision" className="header-logo" />
         </div>
         <div className="header-status">
           {activeClipType && (
@@ -239,6 +267,9 @@ export default function App() {
             ref={videoPlayerRef}
             onVideoLoaded={handleVideoLoaded}
             activeClipType={activeClipType}
+            previewRange={previewRange}
+            onPreviewEnd={handlePreviewEnd}
+            streamPort={streamPort}
           />
         </section>
 
