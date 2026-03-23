@@ -8,6 +8,8 @@ on:
 
 jobs:
   build-mac:
+    permissions:
+      contents: write
     runs-on: macos-latest
     
     steps:
@@ -40,3 +42,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target x86_64-apple-darwin
+
+      - name: Save Installers as Artifact Fallback
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mac-Installers
+          path: src-tauri/target/*/release/bundle/dmg/*.dmg
