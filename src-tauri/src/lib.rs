@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri_plugin_shell::ShellExt;
 
 mod db;
 
@@ -33,6 +34,7 @@ pub struct Tag {
 /// All data is passed directly from the frontend — no Rust-side DB queries needed.
 #[tauri::command]
 async fn export_clip(
+    app_handle: tauri::AppHandle,
     video_path: String,
     clip_type: String,
     start_time: f64,
@@ -60,7 +62,10 @@ async fn export_clip(
     );
     let output_path = format!("{}/{}", output_dir.trim_end_matches('/'), output_filename);
 
-    let status = std::process::Command::new("ffmpeg")
+    let sidecar_command = app_handle.shell().sidecar("ffmpeg")
+        .map_err(|e| format!("Failed to find FFmpeg sidecar: {}", e))?;
+
+    let output = sidecar_command
         .args([
             "-y",
             "-i", &video_path,
@@ -71,23 +76,21 @@ async fn export_clip(
             &output_path,
         ])
         .output()
-        .map_err(|e| format!("Failed to run FFmpeg: {}. Make sure FFmpeg is installed (brew install ffmpeg).", e))?;
+        .await
+        .map_err(|e| format!("Failed to execute FFmpeg sidecar: {}", e))?;
 
-    if status.status.success() {
+    if output.status.success() {
         Ok(output_path)
     } else {
-        let stderr = String::from_utf8_lossy(&status.stderr);
+        let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("FFmpeg error: {}", stderr))
     }
 }
 
-/// Check if FFmpeg is installed on the system.
+/// Check if FFmpeg is available (now bundled as a sidecar).
 #[tauri::command]
-async fn check_ffmpeg() -> Result<bool, String> {
-    match std::process::Command::new("ffmpeg").arg("-version").output() {
-        Ok(output) => Ok(output.status.success()),
-        Err(_) => Ok(false),
-    }
+async fn check_ffmpeg(app_handle: tauri::AppHandle) -> Result<bool, String> {
+    Ok(app_handle.shell().sidecar("ffmpeg").is_ok())
 }
 
 /// Returns the port the local streaming server is running on.
