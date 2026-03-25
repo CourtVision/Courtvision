@@ -36,7 +36,7 @@ jobs:
           curl -L -o win.zip https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v6.1/ffmpeg-6.1-win-64.zip
           unzip -o win.zip
           mv ffmpeg.exe src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
-          rm win.zip ffprobe.exe
+          rm -f win.zip
 
       - name: Build Tauri Windows Installer
         uses: tauri-apps/tauri-action@v0
