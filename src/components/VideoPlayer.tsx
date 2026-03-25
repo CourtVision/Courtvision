@@ -83,20 +83,27 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
         }, []);
 
         const processFile = useCallback(async (filePath: string) => {
-            if (!streamPort) {
-                console.error('Stream port is not available yet');
-                return;
-            }
-
             const parts = filePath.split(/[/\\]/);
             const name = parts[parts.length - 1];
 
             setLoading(true);
             try {
-                // Encode the path to handle spaces and special characters.
-                // We leave the leading slash intact when constructing the URL.
-                const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
-                const streamUrl = `http://127.0.0.1:${streamPort}${encodedPath}`;
+                let streamUrl: string;
+                
+                // Tauri's asset protocol handles Range requests natively on Windows WebView2.
+                if (navigator.userAgent.includes('Win')) {
+                    const { convertFileSrc } = await import('@tauri-apps/api/core');
+                    streamUrl = convertFileSrc(filePath);
+                } else {
+                    if (!streamPort) {
+                        console.error('Stream port is not available yet');
+                        return;
+                    }
+                    // For macOS/Linux, ensure valid URL encoding while preserving the absolute path root
+                    const encodedSegments = filePath.split('/').map(encodeURIComponent);
+                    const encodedPath = encodedSegments.join('/');
+                    streamUrl = `http://127.0.0.1:${streamPort}${encodedPath.startsWith('/') ? '' : '/'}${encodedPath}`;
+                }
 
                 setVideoSrc(streamUrl);
                 setFileName(name);
@@ -130,8 +137,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
 
             const setupDragDrop = async () => {
                 const { listen } = await import('@tauri-apps/api/event');
-                unlisten = await listen<{ paths: string[] }>('tauri://drop', (e) => {
-                    const paths = e.payload.paths;
+                unlisten = await listen<any>('tauri://drag-drop', (e) => {
+                    const payload = e.payload as { paths: string[] };
+                    const paths = payload.paths;
                     if (paths && paths.length > 0) {
                         const file = paths[0];
                         const ext = file.split('.').pop()?.toLowerCase() || '';
