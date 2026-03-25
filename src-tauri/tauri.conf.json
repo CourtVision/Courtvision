@@ -26,7 +26,7 @@
           "**"
         ]
       },
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https://asset.localhost tauri://localhost; media-src 'self' asset: http://asset.localhost https://asset.localhost tauri://localhost; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' asset: http://asset.localhost https://asset.localhost tauri://localhost; media-src 'self' asset: http://asset.localhost https://asset.localhost tauri://localhost http://127.0.0.1:*; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
     }
   },
   "bundle": {
@@ -42,5 +42,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAxOTcwRDhFN0QyOTY5MDcKUldRSGFTbDlqZzJYQWU1eWF6WDREVEpFdll0MUNMQ2RMdXp2MHFvWGNyRzQ4WnE2TkZ4WlkxL3UK",
+      "endpoints": [
+        "https://github.com/CourtVision/Courtvision/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

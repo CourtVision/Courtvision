@@ -89,18 +89,21 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
             setLoading(true);
             try {
                 let streamUrl: string;
+                // Strip 'file://' prefix which drag-drop events sometimes include
+                const cleanPath = filePath.replace(/^file:\/\//i, '');
                 
-                // Tauri's asset protocol handles Range requests natively on Windows WebView2.
+                // Tauri's asset protocol handles Range requests & audio natively on Windows WebView2.
+                // On macOS WebKit, the asset protocol often breaks audio tracks, so we use the local stream server.
                 if (navigator.userAgent.includes('Win')) {
                     const { convertFileSrc } = await import('@tauri-apps/api/core');
-                    streamUrl = convertFileSrc(filePath);
+                    streamUrl = convertFileSrc(cleanPath);
                 } else {
                     if (!streamPort) {
                         console.error('Stream port is not available yet');
                         return;
                     }
                     // For macOS/Linux, ensure valid URL encoding while preserving the absolute path root
-                    const encodedSegments = filePath.split('/').map(encodeURIComponent);
+                    const encodedSegments = cleanPath.split('/').map(encodeURIComponent);
                     const encodedPath = encodedSegments.join('/');
                     streamUrl = `http://127.0.0.1:${streamPort}${encodedPath.startsWith('/') ? '' : '/'}${encodedPath}`;
                 }
@@ -141,7 +144,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
                     const payload = e.payload as { paths: string[] };
                     const paths = payload.paths;
                     if (paths && paths.length > 0) {
-                        const file = paths[0];
+                        let file = paths[0];
+                        file = file.replace(/^file:\/\//i, '');
+                        // On Windows, the path might be like /C:/Users/...
+                        if (navigator.userAgent.includes('Win') && file.startsWith('/')) {
+                            file = file.slice(1);
+                        }
                         const ext = file.split('.').pop()?.toLowerCase() || '';
                         if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
                             processFile(file);

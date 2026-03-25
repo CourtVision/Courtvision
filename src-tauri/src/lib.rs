@@ -51,7 +51,8 @@ async fn export_clip(
     }
 
     // Sanitize the clip_type so custom labels don't break the filesystem during export
-    let safe_clip_type = clip_type.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "_");
+    let safe_clip_type =
+        clip_type.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "_");
 
     let output_filename = format!(
         "{}_{}_{}s-{}s.mp4",
@@ -64,20 +65,30 @@ async fn export_clip(
 
     let duration = end_time - start_time;
 
-    let sidecar_command = app_handle.shell().sidecar("ffmpeg")
+    let sidecar_command = app_handle
+        .shell()
+        .sidecar("ffmpeg")
         .map_err(|e| format!("Failed to find FFmpeg sidecar: {}", e))?;
 
     let output = sidecar_command
         .args([
             "-y",
-            "-ss", &format!("{:.3}", start_time),
-            "-i", &video_path,
-            "-t", &format!("{:.3}", duration),
-            "-map", "0:v",
-            "-map", "0:a?",
-            "-c:v", "copy",
-            "-c:a", "copy",
-            "-avoid_negative_ts", "make_zero",
+            "-ss",
+            &format!("{:.3}", start_time),
+            "-i",
+            &video_path,
+            "-t",
+            &format!("{:.3}", duration),
+            "-map",
+            "0:v",
+            "-map",
+            "0:a?",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "copy",
+            "-avoid_negative_ts",
+            "make_zero",
             &output_path,
         ])
         .output()
@@ -109,11 +120,16 @@ struct StreamPort(u16);
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Start the local streaming server
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
-    listener.set_nonblocking(true).expect("Cannot set non-blocking");
+    let listener =
+        std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
+    listener
+        .set_nonblocking(true)
+        .expect("Cannot set non-blocking");
     let port = listener.local_addr().unwrap().port();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(StreamPort(port))
         .setup(move |_app| {
             // Spawn the Axum server in a background Tokio task
@@ -134,7 +150,10 @@ pub fn run() {
                     .layer(cors);
 
                 let listener = tokio::net::TcpListener::from_std(listener).unwrap();
-                println!("Streaming server listening on {}", listener.local_addr().unwrap());
+                println!(
+                    "Streaming server listening on {}",
+                    listener.local_addr().unwrap()
+                );
                 axum::serve(listener, app).await.unwrap();
             });
 
@@ -142,10 +161,7 @@ pub fn run() {
         })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(
-            tauri_plugin_sql::Builder::default()
-                .build(),
-        )
+        .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
