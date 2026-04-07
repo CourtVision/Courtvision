@@ -9,9 +9,11 @@ export interface StorageMetadata {
 }
 
 const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks for better stability
-const MAX_CONCURRENT = 3;
+const MAX_CONCURRENT = 6; // Standard industry parallelism for multipart
 const MAX_RETRIES = 3;
 const PART_TIMEOUT = 300000; // 5 minute timeout per part for slow connections
+
+import { optimizeVideo } from './ffmpeg';
 
 interface UploadSession {
   key: string;
@@ -58,11 +60,31 @@ export async function getDownloadUrl(key: string): Promise<string> {
   return url;
 }
 
-export async function uploadFile(file: File, onProgress?: (p: number) => void): Promise<string> {
+export async function uploadFile(
+  file: File, 
+  onProgress?: (p: number, status?: string) => void
+): Promise<string> {
+  let activeFile = file;
   const contentType = file.type || 'video/mp4';
 
+  // 0. Industry Standard Optimization Pass
+  // If the file is a heavy video (>100MB), compress it locally first to save upload time
+  if (file.size > 100 * 1024 * 1024) {
+    if (onProgress) onProgress(0, 'Processing Video...');
+    try {
+      activeFile = await optimizeVideo(file, (p) => {
+         if (onProgress) onProgress(p, 'Processing Video...');
+      });
+    } catch (e) {
+      console.warn('Local optimization failed, falling back to raw upload:', e);
+      activeFile = file; // Fallback to raw if ffmpeg fails
+    }
+  }
+
+  if (onProgress) onProgress(0, 'Uploading...');
+
   // Small files: Standard Upload
-  if (file.size <= CHUNK_SIZE) {
+  if (activeFile.size <= CHUNK_SIZE) {
     const response = await fetch('/api/storage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -129,7 +151,7 @@ export async function uploadFile(file: File, onProgress?: (p: number) => void): 
   const updateOverallProgress = () => {
     if (!onProgress) return;
     const totalUploaded = partProgress.reduce((a, b) => a + b, 0);
-    onProgress(Math.round((totalUploaded / file.size) * 100));
+    onProgress(Math.round((totalUploaded / activeFile.size) * 100), 'Uploading...');
   };
 
   updateOverallProgress(); // Show initial resume progress
