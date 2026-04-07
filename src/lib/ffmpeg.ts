@@ -33,19 +33,19 @@ export async function optimizeVideo(file: File, onProgress?: (p: number) => void
     });
   }
 
-  // 2. Transcode with a "Fast Crunch" preset optimized for basketball footage
-  // -vcodec libx264: Industry standard compression
-  // -crf 28: Good balance of size vs quality
-  // -preset ultrafast: Prioritizes speed over absolute compression ratio
-  // -vf "scale='min(1920,iw)':-2": Downscales to 1080p if larger, maintains aspect ratio
+  // 2. Transcode with an "Ultra-Fast Crunch" preset (720p Optimized)
+  // -vcodec libx264: High-efficiency compression
+  // -crf 32: Lower bitrate, significantly faster upload
+  // -vf "scale=-2:720": Downscales to 720p for massive size reduction
   await instance.exec([
     '-i', inputName,
     '-vcodec', 'libx264',
-    '-crf', '28',
+    '-crf', '32',
     '-preset', 'ultrafast',
-    '-vf', "scale='min(1920,iw)':-2",
+    '-vf', "scale=-2:720",
     '-acodec', 'aac',
-    '-b:a', '128k',
+    '-b:a', '64k', // Lower audio bitrate to save space
+    '-movflags', '+faststart', // Helps web playback
     outputName
   ]);
 

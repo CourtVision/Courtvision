@@ -8,8 +8,8 @@ export interface StorageMetadata {
   url: string;
 }
 
-const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB chunks for better stability
-const MAX_CONCURRENT = 6; // Standard industry parallelism for multipart
+const CHUNK_SIZE = 32 * 1024 * 1024; // 32MB massive chunks for fewer server handshakes
+const MAX_CONCURRENT = 8; // Max parallelism for high-speed uploads
 const MAX_RETRIES = 3;
 const PART_TIMEOUT = 300000; // 5 minute timeout per part for slow connections
 
@@ -68,8 +68,8 @@ export async function uploadFile(
   const contentType = file.type || 'video/mp4';
 
   // 0. Industry Standard Optimization Pass
-  // If the file is a heavy video (>100MB), compress it locally first to save upload time
-  if (file.size > 100 * 1024 * 1024) {
+  // If the file is a heavy video (>20MB), compress it locally first to save upload time
+  if (file.size > 20 * 1024 * 1024) {
     if (onProgress) onProgress(0, 'Processing Video...');
     try {
       activeFile = await optimizeVideo(file, (p) => {
