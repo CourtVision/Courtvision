@@ -1,0 +1,19 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "courtvision"
+compatibility_date = "2024-04-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "courtvision-db"
+database_id = "f8c1c90c-0c18-4ef6-a038-79d1f68b6694"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "courtvision-videos"
+
+[vars]
+R2_ENDPOINT = "https://caaf2599b8e237b6fc49894578133e4c.r2.cloudflarestorage.com"
+BUCKET_NAME = "courtvision-videos"
+# Note: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY should be set via secret:
+# wrangler pages secret put R2_ACCESS_KEY_ID
